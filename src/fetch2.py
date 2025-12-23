@@ -5,6 +5,15 @@ from dotenv import load_dotenv
 import os
 import json
 from pprint import pprint
+import schedule
+import time
+import csv
+
+# VERIFICAR PATHS
+
+DATA_DIR = 'data'
+FILE_NAME = 'bitcoin.csv'
+FILE_PATH = os.path.join(DATA_DIR, FILE_NAME)
 
 #LOAD ENV VARIABLES
 load_dotenv()
@@ -52,20 +61,45 @@ def consultar_cotação_bitcoin():
         
         # MANIPULANDO DADOS (dict)
         if 'data' in data and 'BTC' in data['data']:
-          bitcoin_data = data["data"]["BTC"][0]
-          brl_quote = bitcoin_data["quote"]["BRL"]
+            bitcoin_data = data["data"]["BTC"][0]
+            brl_quote = bitcoin_data["quote"]["BRL"]
 
-          #pprint(brl_quote)
-          # EXIBINDO DADOS FORMATADOS
-          pprint(f"Última cotação do Bitcoin: R$ {format_large_number(brl_quote['price'])} BRL")
-          pprint(f"Volume 24h: R$ {format_large_number(brl_quote['volume_24h'])}")
-          pprint(f"Market Cap: R$ {format_large_number(brl_quote['market_cap'])}")
-          pprint(f"Última atualização: ${brl_quote['last_updated']}")
+            # Salvando os dados em um arquivo CSV
+            os.makedirs(DATA_DIR, exist_ok=True)  # Criando o diretório se não existir
+
+            file_exists = os.path.exists(FILE_PATH)
+            
+            with open(FILE_PATH, mode='a', newline='', encoding='utf-8') as csvfile:
+                # criando writer para salvar em csv
+                writer = csv.writer(csvfile, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+                # Escrevendo cabeçalho se o arquivo estiver vazio
+                if not file_exists or os.stat(FILE_PATH).st_size == 0:
+                    writer.writerow(['price', 'volume_24h', 'market_cap', 'last_updated'])
+                
+                # Adicionando uma nova linha com os dados do Bitcoin
+                writer.writerow([brl_quote['price'], brl_quote['volume_24h'], brl_quote['market_cap'], brl_quote['last_updated']])
+
+            #pprint(brl_quote)
+            # EXIBINDO DADOS FORMATADOS
+            pprint(f"Última cotação do Bitcoin: R$ {format_large_number(brl_quote['price'])} BRL")
+            pprint(f"Volume 24h: R$ {format_large_number(brl_quote['volume_24h'])}")
+            pprint(f"Market Cap: R$ {format_large_number(brl_quote['market_cap'])}")
+            pprint(f"Última atualização: ${brl_quote['last_updated']}")
         else:
           print("Erro ao tentar obter os dados do Bitcoin:", data['status'].get('error_message', 'Unknown error'))
+
+        return data
 
     except (ConnectionError, Timeout, TooManyRedirects) as e:
         print(e)  
 
 
-consultar_cotação_bitcoin()
+# Agendamento Consulta a cada 10 segundos
+schedule.every(15).seconds.do(consultar_cotação_bitcoin)
+
+print("Iniciando agendamento de consultas à cotação do Bitcoin a cada 15 segundos...")
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)

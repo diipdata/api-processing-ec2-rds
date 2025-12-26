@@ -74,6 +74,27 @@ EC2 Streamlit:
 RDS:
 - Acessível apenas pelas EC2
 
+### Como conectar a instancia de processamento ec2 ao banco RDS
+
+Para a EC2 acessar o RDS, o que realmente precisa acontecer é:
+
+> O Security Group do RDS precisa permitir conexões vindas do Security Group da EC2, na porta do Postgres (5432).
+
+Nada mais.
+
+Não é sobre “autorizar IP”.
+É sobre autorizar outro recurso da própria VPC.
+
+A idéia aqui é:
+
+- entender SG
+- entender tráfego privado
+- entender dependências
+
+E principalmente:
+
+Nunca precisa abrir banco para “0.0.0.0/0”.
+
 
 ## Estimativa de custos (AWS) -> Até fetch4.py
 

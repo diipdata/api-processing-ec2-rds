@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+
+# Virtual envs
+.venv
+venv
+env
+
+# Logs e arquivos temporários
+*.log
+*.tmp
+*.swp
+*.bak
+
+# Config local
+.env
+.env.*
+*.local
+
+# IDEs / ferramentas
+.vscode
+.idea
+*.code-workspace
+
+# Dados que não precisam ir pra imagem
+data/
+datasets/
+notebooks/
+
+# Build / dist
+build/
+dist/
+*.egg-info
+
+# Docker
+docker-compose.override.yml

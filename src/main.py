@@ -8,9 +8,8 @@ from pprint import pprint
 import schedule
 import time
 import csv
-import psycopg2
+import psycopg2 #psycopg2-binary
 from psycopg2 import sql
-from datetime import datetime
 import boto3
 from botocore.exceptions import NoCredentialsError
 from datetime import datetime, timezone

@@ -11,9 +11,6 @@ import csv
 import psycopg2
 from psycopg2 import sql
 from datetime import datetime
-import boto3
-from botocore.exceptions import NoCredentialsError
-from datetime import datetime, timezone
 
 # ==============================================
 # CONFIGURAÇÕES
@@ -42,8 +39,6 @@ print("===================================")
 API_URL = "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest"
 PARAMS = {"symbol": "BTC", "convert": "BRL"}
 HEADERS = {"Accepts": "application/json", "X-CMC_PRO_API_KEY": CMC_API_KEY}
-
-S3_BUCKET = "datalake-api-bitcoin-prod"
 
 # ==============================================
 # FUNÇÕES AUXILIARES
@@ -91,35 +86,6 @@ def salvar_em_csv(brl_quote):
             brl_quote['market_cap'],
             brl_quote['last_updated']
         ])
-
-def upload_csv_to_s3():
-    try:
-        s3 = boto3.client("s3")
-
-        agora = datetime.now(timezone.utc)
-
-        key = (
-            f"raw/bitcoin/"
-            f"year={agora.year}/"
-            f"month={agora.month:02}/"
-            f"day={agora.day:02}/"
-            f"bitcoin_{agora.strftime('%Y-%m-%d_%H-%M-%S')}.csv"
-        )
-
-        s3.upload_file(
-            Filename=CSV_FILE,
-            Bucket=S3_BUCKET,
-            Key=key
-        )
-
-        print("CSV enviado para o S3 com sucesso!")
-
-    except FileNotFoundError:
-        print("Arquivo CSV não encontrado.")
-    except NoCredentialsError:
-        print("Credenciais AWS não encontradas — verifique o aws configure.")
-    except Exception as e:
-        print(f"Erro ao enviar para o S3: {e}")
 
 # ==============================================
 # BANCO DE DADOS
@@ -206,7 +172,6 @@ def consultar_e_salvar():
 
             # Salva nos dois destinos
             salvar_em_csv(brl)
-            upload_csv_to_s3()
             salvar_no_banco(brl)
 
         else:

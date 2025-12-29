@@ -1,4 +1,6 @@
 import streamlit as st
+from streamlit_plotly_events import plotly_events
+import plotly.express as px
 import pandas as pd
 import psycopg2
 import os
@@ -48,11 +50,11 @@ if not df.empty:
 # --- GRÁFICO ---
     st.markdown("### Histórico de Preço (Últimas Leituras)")
     fig = px.line(df, x='last_updated', y='price', labels={'price': 'Preço (R$)', 'last_updated': 'Tempo'})
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 # --- TABELA ---
     st.markdown("### Dados Recentes")
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, width="stretch")
 
 else:
     st.warning("Aguardando dados serem carregados do banco...")

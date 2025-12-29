@@ -229,7 +229,6 @@ if __name__ == "__main__":
     criar_tabela()
     
     # Sugestão: 5 minutos (300 segundos) para não estourar limite da API
-    # Se realmente precisar de 15s, troque para .seconds
     schedule.every(15).seconds.do(consultar_e_salvar)
     
     print("Agendamento configurado: consulta a cada 5 minutos")

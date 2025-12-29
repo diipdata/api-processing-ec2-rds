@@ -1,0 +1,21 @@
+services:
+  # Serviço 1: Script main.py que roda a cada 5 min
+  ingestor:
+    build: .
+    container_name: btc_ingestor
+    env_file: .env
+    restart: always
+    volumes:
+      - ./data:/app/data
+
+  # Serviço 2: O Dashboard Streamlit
+  dashboard:
+    build: .
+    container_name: btc_dashboard
+    command: ["uv", "run", "streamlit", "run", "src/dashboard.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    ports:
+      - "8501:8501"
+    env_file: .env
+    restart: always
+    depends_on:
+      - ingestor

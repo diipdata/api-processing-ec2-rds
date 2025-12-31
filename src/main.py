@@ -122,6 +122,7 @@ def criar_tabela():
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
+                # Cria a tabela se não existir
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS bitcoin_precos (
                         id SERIAL PRIMARY KEY,
@@ -131,20 +132,37 @@ def criar_tabela():
                         last_updated TIMESTAMP WITH TIME ZONE,
                         inserted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     );
-                    
+                """)
+
+                # Remove duplicatas mantendo o registro mais antigo (menor id)
+                cursor.execute("""
+                    DELETE FROM bitcoin_precos a USING (
+                        SELECT MIN(id) as keep_id, last_updated
+                        FROM bitcoin_precos 
+                        GROUP BY last_updated
+                        HAVING COUNT(*) > 1
+                    ) b
+                    WHERE a.last_updated = b.last_updated 
+                    AND a.id != b.keep_id;
+                """)
+
+                # Agora tenta criar a constraint única
+                cursor.execute("""
                     DO $$
                     BEGIN
                         IF NOT EXISTS (
                             SELECT 1 FROM pg_constraint 
                             WHERE conname = 'unique_last_updated'
+                              AND conrelid = 'bitcoin_precos'::regclass
                         ) THEN
                             ALTER TABLE bitcoin_precos 
                             ADD CONSTRAINT unique_last_updated UNIQUE (last_updated);
                         END IF;
                     END $$;
                 """)
+
             conn.commit()
-        print("Tabela e constraint única verificadas/criadas com sucesso!")
+        print("Tabela configurada, duplicatas removidas e constraint única criada com sucesso!")
     except Exception as e:
         print(f"Erro ao configurar tabela: {e}")
 

@@ -1,9 +1,0 @@
-RESPONDER PARA README.md
-
-1 - o que eu ganho separando o security group das duas instancias ec2?
-
-2 - porque compartilhar a mesma vpc - RDS - Ec2 - S3?
-
-3 - dockerfile e Dockercompose nesse processo.
-porque usar os dois?
-

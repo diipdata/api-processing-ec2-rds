@@ -71,25 +71,32 @@ def parse_timestamp(ts_str):
         return None
 
 # ==============================================
-# TEMP EM CSV E UPLOAD PARA S3
+# SALVAR EM CSV
 # ==============================================
 
-def salvar_e_upload_csv_temporario(brl_quote):
-    agora = datetime.now(timezone.utc)
-    temp_csv = f"/tmp/bitcoin_{agora.strftime('%Y-%m-%d_%H-%M-%S')}.csv"
-    
-    with open(temp_csv, mode='w', newline='', encoding='utf-8') as f:
+def salvar_em_csv(brl_quote):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    file_exists = os.path.exists(CSV_FILE) and os.stat(CSV_FILE).st_size > 0
+
+    with open(CSV_FILE, mode='a', newline='', encoding='utf-8') as f:
         writer = csv.writer(f, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(['price', 'volume_24h', 'market_cap', 'last_updated'])
+        
+        if not file_exists:
+            writer.writerow(['price', 'volume_24h', 'market_cap', 'last_updated'])
+        
         writer.writerow([
             brl_quote['price'],
             brl_quote['volume_24h'],
             brl_quote['market_cap'],
             brl_quote['last_updated']
         ])
-    
+
+def upload_csv_to_s3():
     try:
         s3 = boto3.client("s3")
+
+        agora = datetime.now(timezone.utc)
+
         key = (
             f"raw/bitcoin/"
             f"year={agora.year}/"
@@ -97,13 +104,21 @@ def salvar_e_upload_csv_temporario(brl_quote):
             f"day={agora.day:02}/"
             f"bitcoin_{agora.strftime('%Y-%m-%d_%H-%M-%S')}.csv"
         )
-        s3.upload_file(Filename=temp_csv, Bucket=S3_BUCKET, Key=key)
-        print("CSV temporário enviado para o S3 com sucesso!")
+
+        s3.upload_file(
+            Filename=CSV_FILE,
+            Bucket=S3_BUCKET,
+            Key=key
+        )
+
+        print("CSV enviado para o S3 com sucesso!")
+
+    except FileNotFoundError:
+        print("Arquivo CSV não encontrado.")
+    except NoCredentialsError:
+        print("Credenciais AWS não encontradas — verifique o aws configure.")
     except Exception as e:
         print(f"Erro ao enviar para o S3: {e}")
-    finally:
-        if os.path.exists(temp_csv):
-            os.remove(temp_csv)  # limpa o temporário
 
 # ==============================================
 # BANCO DE DADOS
@@ -120,49 +135,40 @@ def get_db_connection():
 
 def criar_tabela():
     try:
-        with get_db_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS bitcoin_precos (
-                        id SERIAL PRIMARY KEY,
-                        price NUMERIC(18,2),
-                        volume_24h NUMERIC(24,2),
-                        market_cap NUMERIC(24,2),
-                        last_updated TIMESTAMP WITH TIME ZONE,
-                        inserted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                    );
-                    
-                    DO $$
-                    BEGIN
-                        IF NOT EXISTS (
-                            SELECT 1 FROM pg_constraint 
-                            WHERE conname = 'unique_last_updated'
-                        ) THEN
-                            ALTER TABLE bitcoin_precos 
-                            ADD CONSTRAINT unique_last_updated UNIQUE (last_updated);
-                        END IF;
-                    END $$;
-                """)
-            conn.commit()
-        print("Tabela e constraint única verificadas/criadas com sucesso!")
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS bitcoin_precos (
+                    id SERIAL PRIMARY KEY,
+                    price NUMERIC(18,2),
+                    volume_24h NUMERIC(24,2),
+                    market_cap NUMERIC(24,2),
+                    last_updated TIMESTAMP WITH TIME ZONE,
+                    inserted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+        conn.commit()
+        print("Tabela 'bitcoin_precos' verificada/criada com sucesso!")
+    except psycopg2.OperationalError as e:
+        print("ERRO DE CONEXÃO COM O BANCO (provável credencial/host/porta errados):")
+        print(e)
     except Exception as e:
-        print(f"Erro ao configurar tabela: {e}")
+        print("Erro inesperado ao criar tabela:")
+        print(e)
+    finally:
+        if conn is not None:
+            conn.close()
 
 def salvar_no_banco(brl_quote):
     try:
         last_updated_dt = parse_timestamp(brl_quote['last_updated'])
         
-        if last_updated_dt is None:
-            print("Erro: timestamp inválido da API, pulando inserção.")
-            return
-
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
                     INSERT INTO bitcoin_precos 
                     (price, volume_24h, market_cap, last_updated)
                     VALUES (%s, %s, %s, %s)
-                    ON CONFLICT (last_updated) DO NOTHING
                 """, (
                     brl_quote['price'],
                     brl_quote['volume_24h'],
@@ -170,13 +176,7 @@ def salvar_no_banco(brl_quote):
                     last_updated_dt
                 ))
             conn.commit()
-        
-        # Verifica se inseriu algo novo
-        if cursor.rowcount > 0:
-            print("Novo dado inserido com sucesso no banco.")
-        else:
-            print("Dado duplicado (mesmo last_updated) — ignorado (idempotência).")
-
+        print("Dados inseridos com sucesso no banco.")
     except Exception as e:
         print(f"Erro ao inserir no banco: {e}")
 
@@ -204,7 +204,8 @@ def consultar_e_salvar():
             print(f"Market Cap:  R$ {format_large_number(brl['market_cap'])}")
 
             # Salva nos dois destinos
-            salvar_e_upload_csv_temporario(brl)
+            salvar_em_csv(brl)
+            upload_csv_to_s3()
             salvar_no_banco(brl)
 
         else:

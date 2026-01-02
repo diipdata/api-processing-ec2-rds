@@ -1,3 +1,7 @@
+<p>
+<img src="assets/capa.png">
+</p>
+
 # Pipeline de Dados Bitcoin: API para S3 e RDS (PostgreSQL) com Dashboard Distribuído
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python&logoColor=yellow)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)

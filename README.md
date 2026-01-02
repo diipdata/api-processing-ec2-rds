@@ -83,7 +83,7 @@ Separação clara de responsabilidades:
 *KPIs, gráfico de tendência e tabela de registros recentes.*
 
 ### Execução do Container (docker compose up)
-![Docker Compose Up](assets/docker-compose-up.png)  
+![Docker Compose Up](assets/docker-compose-up.jpg)  
 *Terminal mostrando o build e execução do ingestor/dashboard.*
 
 ### Demo em Vídeo: Subindo o container e verificando ingestão
